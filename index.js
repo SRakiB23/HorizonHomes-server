@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 // const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
+// const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -10,6 +10,9 @@ const corsConfig = {
   Credential: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
 };
+
+app.use(cors());
+app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.552onl4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -29,6 +32,21 @@ async function run() {
     await client.connect();
 
     const propertyCollection = client.db("propertyDB").collection("properties");
+    const reviewCollection = client.db("propertyDB").collection("reviews");
+
+    //property API
+    app.get("/properties", async (req, res) => {
+      const cursor = propertyCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    //Review API
+    app.get("/reviews", async (req, res) => {
+      const cursor = reviewCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
