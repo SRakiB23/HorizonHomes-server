@@ -14,7 +14,7 @@ const corsConfig = {
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.552onl4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -40,12 +40,35 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    app.get("/properties/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await propertyCollection.findOne(query);
+      res.send(result);
+    });
 
     //Review API
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    //compare
+    app.get("/reviews/:id", async (req, res) => {
+      const propertyId = req.params.id;
+      const property = await propertyCollection.findOne({
+        _id: new ObjectId(propertyId),
+      });
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+      const propertyName = property.property_name;
+      //fetch reviews match
+      const reviews = await reviewCollection
+        .find({ property_name: propertyName })
+        .toArray();
+      res.json(reviews);
     });
 
     // Send a ping to confirm a successful connection
