@@ -33,6 +33,7 @@ async function run() {
 
     const propertyCollection = client.db("propertyDB").collection("properties");
     const reviewCollection = client.db("propertyDB").collection("reviews");
+    const wishListCollection = client.db("propertyDB").collection("wishList");
 
     //property API
     app.get("/properties", async (req, res) => {
@@ -51,6 +52,21 @@ async function run() {
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.post("/reviews", async (req, res) => {
+      const newReviews = req.body;
+      console.log(newReviews);
+      const result = await reviewCollection.insertOne(newReviews);
+      res.send(result);
+    });
+
+    //wishlist api
+    app.post("/wishlist", async (req, res) => {
+      const newWishList = req.body;
+      console.log(newWishList);
+      const result = await wishListCollection.insertOne(newWishList);
       res.send(result);
     });
 
