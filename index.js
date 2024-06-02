@@ -69,6 +69,42 @@ async function run() {
       const result = await wishListCollection.insertOne(newWishList);
       res.send(result);
     });
+    app.get("/wishlist/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await wishListCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.get("/wishlist", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await wishListCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.patch("/wishlist/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateWishlist = req.body;
+      const wishlist = {
+        $set: {
+          property_name: updateWishlist.property_name,
+          image: updateWishlist.image,
+          location: updateWishlist.location,
+          agent_name: updateWishlist.agent_name,
+          agent_image: updateWishlist.agent_image,
+          verification_status: updateWishlist.verification_status,
+          buyingDate: updateWishlist.buyingDate,
+          price_range: updateWishlist.price_range,
+          user_name: updateWishlist.user_name,
+          email: updateWishlist.email,
+          offered_price: updateWishlist.offered_price,
+        },
+      };
+      const result = await wishListCollection.updateOne(filter, wishlist);
+      res.send(result);
+    });
 
     //compare
     app.get("/reviews/:id", async (req, res) => {
