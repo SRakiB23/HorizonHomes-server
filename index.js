@@ -34,6 +34,7 @@ async function run() {
     const propertyCollection = client.db("propertyDB").collection("properties");
     const reviewCollection = client.db("propertyDB").collection("reviews");
     const wishListCollection = client.db("propertyDB").collection("wishList");
+    const userCollection = client.db("propertyDB").collection("users");
 
     //property API
     app.get("/properties", async (req, res) => {
@@ -52,6 +53,20 @@ async function run() {
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/review", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.delete("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
       res.send(result);
     });
 
@@ -100,6 +115,7 @@ async function run() {
           user_name: updateWishlist.user_name,
           email: updateWishlist.email,
           offered_price: updateWishlist.offered_price,
+          status: updateWishlist.status,
         },
       };
       const result = await wishListCollection.updateOne(filter, wishlist);
@@ -121,6 +137,20 @@ async function run() {
         .find({ property_name: propertyName })
         .toArray();
       res.json(reviews);
+    });
+
+    ////users Api
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      // insert email if user doesnt exists:
+      // you can do this many ways (1. email unique, 2. upsert 3. simple checking)
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
