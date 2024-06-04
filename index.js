@@ -62,6 +62,26 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/properties/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdateProperties = req.body;
+      const property = {
+        $set: {
+          property_name: UpdateProperties.property_name,
+          image: UpdateProperties.image,
+          location: UpdateProperties.location,
+          agent_name: UpdateProperties.agent_name,
+          agent_email: UpdateProperties.agent_email,
+          agent_image: UpdateProperties.agent_image,
+          verification_status: UpdateProperties.verification_status,
+          price_range: UpdateProperties.price_range,
+        },
+      };
+      const result = await propertyCollection.updateOne(filter, property);
+      res.send(result);
+    });
+
     //Review API
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
