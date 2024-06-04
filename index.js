@@ -82,6 +82,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/properties/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await propertyCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //Review API
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
