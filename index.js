@@ -49,6 +49,13 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/properties", async (req, res) => {
+      const newProperty = req.body;
+      console.log(newProperty);
+      const result = await propertyCollection.insertOne(newProperty);
+      res.send(result);
+    });
+
     //Review API
     app.get("/reviews", async (req, res) => {
       const cursor = reviewCollection.find();
@@ -151,6 +158,26 @@ async function run() {
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/users/agent/:email", async (req, res) => {
+      const email = req.params.email;
+      //   if (email !== req.decoded.email) {
+      //     return res.status(403).send({ message: "forbidden access" });
+      //   }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let agent = false;
+      if (user) {
+        agent = user?.role === "agent";
+      }
+      res.send({ agent });
     });
 
     // Send a ping to confirm a successful connection
