@@ -48,6 +48,12 @@ async function run() {
       const result = await propertyCollection.findOne(query);
       res.send(result);
     });
+    app.get("/property", async (req, res) => {
+      const email = req.query.email;
+      const query = { agent_email: email };
+      const result = await propertyCollection.find(query).toArray();
+      res.send(result);
+    });
 
     app.post("/properties", async (req, res) => {
       const newProperty = req.body;
