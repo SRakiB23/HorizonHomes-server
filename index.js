@@ -138,6 +138,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/wishlistt", async (req, res) => {
+      const email = req.query.email;
+      const query = { agent_email: email };
+      const result = await wishListCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.patch("/wishlist/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -160,6 +167,30 @@ async function run() {
       };
       const result = await wishListCollection.updateOne(filter, wishlist);
       res.send(result);
+    });
+
+    app.patch("/wishlistt/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        // Update only the 'status' field of the document with the specified '_id'
+        const result = await wishListCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: status } } // Use $set to update only the 'status' field
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, message: "Status updated successfully" });
+        } else {
+          res
+            .status(400)
+            .send({ success: false, message: "Failed to update status" });
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        res.status(500).send({ error: "Failed to update status" });
+      }
     });
 
     //compare
