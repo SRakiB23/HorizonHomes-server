@@ -82,6 +82,31 @@ async function run() {
       res.send(result);
     });
 
+    // Server-side code
+    app.patch("/propertiess/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { verification_status } = req.body;
+
+        // Update only the 'status' field of the document with the specified '_id'
+        const result = await propertyCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { verification_status: verification_status } } // Use $set to update only the 'status' field
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, message: "Status updated successfully" });
+        } else {
+          res
+            .status(400)
+            .send({ success: false, message: "Failed to update status" });
+        }
+      } catch (error) {
+        console.error("Error verifying status:", error);
+        res.status(500).send({ error: "Failed to update status" });
+      }
+    });
+
     app.delete("/properties/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -231,10 +256,6 @@ async function run() {
 
     app.get("/users/agent/:email", async (req, res) => {
       const email = req.params.email;
-      //   if (email !== req.decoded.email) {
-      //     return res.status(403).send({ message: "forbidden access" });
-      //   }
-
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let agent = false;
@@ -242,6 +263,41 @@ async function run() {
         agent = user?.role === "agent";
       }
       res.send({ agent });
+    });
+
+    app.get("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/users/agent/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "agent",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
