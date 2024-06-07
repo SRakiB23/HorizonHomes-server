@@ -42,6 +42,20 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    app.get("/properti", async (req, res) => {
+      try {
+        const cursor = propertyCollection.find({
+          verification_status: "verified",
+        });
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+        res.status(500).send({ error: "Failed to fetch properties" });
+      }
+    });
+
     app.get("/properties/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -216,6 +230,13 @@ async function run() {
         console.error("Error updating status:", error);
         res.status(500).send({ error: "Failed to update status" });
       }
+    });
+
+    app.delete("/wishlist/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await wishListCollection.deleteOne(query);
+      res.send(result);
     });
 
     //compare
