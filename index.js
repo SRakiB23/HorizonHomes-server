@@ -118,7 +118,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/properties", verifyAgent, verifyToken, async (req, res) => {
+    app.post("/properties", verifyToken, async (req, res) => {
       const newProperty = req.body;
       const result = await propertyCollection.insertOne(newProperty);
       res.send(result);
@@ -287,7 +287,36 @@ async function run() {
       }
     });
 
-    app.delete("/wishlist/:id", async (req, res) => {
+    app.patch("/wishlistR/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+        console.log(status);
+
+        // Update only the 'status' field of the document with the specified '_id'
+        const result = await wishListCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              status: status,
+            },
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, message: "Status updated successfully" });
+        } else {
+          res
+            .status(400)
+            .send({ success: false, message: "Failed to update status" });
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        res.status(500).send({ error: "Failed to update status" });
+      }
+    });
+
+    app.delete("/wishlist/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await wishListCollection.deleteOne(query);
