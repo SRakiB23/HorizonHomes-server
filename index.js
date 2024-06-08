@@ -4,6 +4,7 @@ const cors = require("cors");
 // const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const app = express();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 const corsConfig = {
   origin: "*",
@@ -71,7 +72,6 @@ async function run() {
 
     app.post("/properties", async (req, res) => {
       const newProperty = req.body;
-      console.log(newProperty);
       const result = await propertyCollection.insertOne(newProperty);
       res.send(result);
     });
@@ -211,12 +211,19 @@ async function run() {
     app.patch("/wishlistt/:id", async (req, res) => {
       try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, transcation_id, sold_price } = req.body;
+        console.log(sold_price);
 
         // Update only the 'status' field of the document with the specified '_id'
         const result = await wishListCollection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: { status: status } } // Use $set to update only the 'status' field
+          {
+            $set: {
+              status: status,
+              transcation_id: transcation_id,
+              sold_price: sold_price,
+            },
+          } // Use $set to update only the 'status' field
         );
 
         if (result.modifiedCount > 0) {
@@ -338,6 +345,34 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
+    });
+
+    //payment
+    app.post("/create-payment-intent", async (req, res) => {
+      const { offered_price } = req.body;
+
+      // Validate and parse the offered price
+      const price = parseFloat(offered_price);
+      console.log(price, "priceeeeee");
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).send({ error: "Invalid offered price" });
+      }
+
+      // Limit the maximum amount to $999,999.99
+      const amount = Math.min(parseInt(price * 100), 99999999);
+      console.log(amount, "amount inside the intent");
+
+      // Create the payment intent with the specified amount
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      // Send the client secret back to the client
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
     // Send a ping to confirm a successful connection
