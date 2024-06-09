@@ -11,7 +11,13 @@ const corsConfig = {
   methods: ["GET", "POST", "PUT", "DELETE"],
 };
 
-app.use(cors());
+// Middleware
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://imgbb.com/", ""],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -86,6 +92,35 @@ async function run() {
     };
 
     //property API
+
+    const propertiesAdvertise = await propertyCollection.find({}).toArray();
+    // Separate the advertised properties
+    const advertisedProperties = propertiesAdvertise.filter(
+      (property) => property.advertisement === "advertise"
+    );
+    const otherProperties = propertiesAdvertise.filter(
+      (property) => property.advertisement !== "advertise"
+    );
+
+    // Determine the properties to send
+    let result;
+    if (advertisedProperties.length > 0) {
+      result = advertisedProperties.concat(
+        otherProperties.slice(0, 6 - advertisedProperties.length)
+      );
+    } else {
+      result = propertiesAdvertise.slice(0, 6);
+    }
+
+    app.get("propertiesadvertise", async (req, res) => {
+      try {
+        const properties = await run();
+        res.json(properties);
+      } catch (err) {
+        res.status(500).json({ error: "Failed to fetch properties" });
+      }
+    });
+
     app.get("/properties", async (req, res) => {
       const cursor = propertyCollection.find();
       const result = await cursor.toArray();
@@ -118,7 +153,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/properties", verifyToken, async (req, res) => {
+    app.post("/properties", async (req, res) => {
       const newProperty = req.body;
       const result = await propertyCollection.insertOne(newProperty);
       res.send(result);
@@ -162,6 +197,33 @@ async function run() {
           res
             .status(400)
             .send({ success: false, message: "Failed to update status" });
+        }
+      } catch (error) {
+        console.error("Error verifying status:", error);
+        res.status(500).send({ error: "Failed to update status" });
+      }
+    });
+    app.patch("/propertyadvertise/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { advertisement } = req.body;
+
+        // Update only the 'status' field of the document with the specified '_id'
+        const result = await propertyCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { advertisement: advertisement } } // Use $set to update only the 'status' field
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({
+            success: true,
+            message: "Advertisement updated successfully",
+          });
+        } else {
+          res.status(400).send({
+            success: false,
+            message: "Failed to update Advertisement",
+          });
         }
       } catch (error) {
         console.error("Error verifying status:", error);
@@ -423,6 +485,33 @@ async function run() {
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+
+    // app.patch("/users/agentt/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const filter = { _id: new ObjectId(id) };
+    //   const updatedDoc = {
+    //     $set: {
+    //       role: "fraud",
+    //     },
+    //   };
+
+    //   // Update user role
+    //   await userCollection.updateOne(filter, updatedDoc);
+
+    //   // Find properties added by the agent
+    //   const propertiesAddedByAgent = await propertyCollection
+    //     .find({ agent_email: agent_email })
+    //     .toArray();
+
+    //   // Remove properties from "All properties" page and advertisement section
+    //   // Assuming you have functions to remove properties from these sections
+    //   propertiesAddedByAgent.forEach(async (property) => {
+    //     await removeFromAllProperties(property._id);
+    //     await removeFromAdvertisementSection(property._id);
+    //   });
+
+    //   res.send({ success: true });
+    // });
 
     app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
