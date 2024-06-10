@@ -93,24 +93,17 @@ async function run() {
 
     //property API
 
-    const propertiesAdvertise = await propertyCollection.find({}).toArray();
-    // Separate the advertised properties
-    const advertisedProperties = propertiesAdvertise.filter(
-      (property) => property.advertisement === "advertise"
-    );
-    const otherProperties = propertiesAdvertise.filter(
-      (property) => property.advertisement !== "advertise"
-    );
-
-    // Determine the properties to send
-    let result;
-    if (advertisedProperties.length > 0) {
-      result = advertisedProperties.concat(
-        otherProperties.slice(0, 6 - advertisedProperties.length)
-      );
-    } else {
-      result = propertiesAdvertise.slice(0, 6);
-    }
+    // Endpoint to fetch advertisement properties
+    app.get("/propertiesadvertise", async (req, res) => {
+      try {
+        const cursor = propertyCollection.find().sort({ advertisement: -1 }); // Sort by advertise descending
+        const properties = await cursor.toArray();
+        res.json(properties);
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+        res.status(500).send("Error fetching properties");
+      }
+    });
 
     app.get("propertiesadvertise", async (req, res) => {
       try {
@@ -415,13 +408,16 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
     app.get("/users/agent/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(401).json({ message: "Unauthorized Access" });
+      }
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let agent = false;
@@ -476,42 +472,45 @@ async function run() {
 
     app.patch("/users/agentt/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: "fraud",
-        },
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
+
+      try {
+        // Mark the agent as fraudulent in the user collection
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: { fraud: "fraud" } };
+        const userUpdateResult = await userCollection.updateOne(
+          filter,
+          updatedDoc
+        );
+
+        // Fetch the agent's email from the user collection
+        const user = await userCollection.findOne(filter);
+        if (!user || !user.email) {
+          return res.status(404).send("User not found or email not available");
+        }
+        const agentEmail = user.email;
+
+        // Mark all properties associated with the agent as fraudulent in the property collection
+        const propertiesUpdateDoc = { $set: { fraud: "fraud" } };
+        const propertiesUpdateResult = await propertyCollection.updateMany(
+          { agent_email: agentEmail },
+          propertiesUpdateDoc
+        );
+
+        // Log results for debugging
+        console.log("User update result:", userUpdateResult);
+        console.log("Properties update result:", propertiesUpdateResult);
+
+        // Respond with success
+        res.send({
+          userUpdateResult,
+          propertiesUpdateResult,
+        });
+      } catch (error) {
+        // Log and handle errors
+        console.error("Error marking agent as fraudulent:", error);
+        res.status(500).send("Internal Server Error");
+      }
     });
-
-    // app.patch("/users/agentt/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const filter = { _id: new ObjectId(id) };
-    //   const updatedDoc = {
-    //     $set: {
-    //       role: "fraud",
-    //     },
-    //   };
-
-    //   // Update user role
-    //   await userCollection.updateOne(filter, updatedDoc);
-
-    //   // Find properties added by the agent
-    //   const propertiesAddedByAgent = await propertyCollection
-    //     .find({ agent_email: agent_email })
-    //     .toArray();
-
-    //   // Remove properties from "All properties" page and advertisement section
-    //   // Assuming you have functions to remove properties from these sections
-    //   propertiesAddedByAgent.forEach(async (property) => {
-    //     await removeFromAllProperties(property._id);
-    //     await removeFromAdvertisementSection(property._id);
-    //   });
-
-    //   res.send({ success: true });
-    // });
 
     app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
