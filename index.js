@@ -3,6 +3,8 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
+const cookieParser = require("cookie-parser");
+
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 const corsConfig = {
@@ -14,11 +16,16 @@ const corsConfig = {
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://imgbb.com/", ""],
+    origin: [
+      "http://localhost:5173",
+      "https://imgbb.com/",
+      "https://horizonhomes-c540e.web.app",
+    ],
     credentials: true,
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.552onl4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -35,12 +42,18 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const propertyCollection = client.db("propertyDB").collection("properties");
     const reviewCollection = client.db("propertyDB").collection("reviews");
     const wishListCollection = client.db("propertyDB").collection("wishList");
     const userCollection = client.db("propertyDB").collection("users");
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    };
 
     //jwt
     app.post("/jwt", async (req, res) => {
@@ -49,6 +62,15 @@ async function run() {
         expiresIn: "1h",
       });
       res.send({ token });
+    });
+
+    //clearing Token
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res
+        .clearCookie("token", { ...cookieOptions, maxAge: 0 })
+        .send({ success: true });
     });
 
     // middlewares
@@ -139,10 +161,18 @@ async function run() {
       const result = await propertyCollection.findOne(query);
       res.send(result);
     });
+
     app.get("/property", async (req, res) => {
       const email = req.query.email;
       const query = { agent_email: email };
       const result = await propertyCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/property/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }; // Assuming you're using MongoDB's ObjectId
+      const result = await propertyCollection.findOne(query);
       res.send(result);
     });
 
@@ -548,7 +578,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
